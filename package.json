@@ -1,0 +1,2 @@
+{ "name": "anuar-desktop", "version": "1.0.0", "description": "Convierte una app Node (+ MariaDB opcional) en un instalador de escritorio para Windows.", "main": "lib/index.js", "license": "UNLICENSED",
+  "scripts": { "test": "node prueba/test.js" } }

@@ -1,0 +1,4 @@
+{ "id":"ejemplo-app","nombre":"Ejemplo App","version":"1.0","editor":"Anuar Sistemas","entrada":"server.js","puertoWeb":3055,"listo":"/",
+  "incluir":["*.js","package.json"],
+  "campos":[{"id":"pto","etiqueta":"Punto","patron":"^\\d{3}$","error":"3 dígitos"},{"id":"nube","etiqueta":"Nube","defecto":"https://x.com"}],
+  "entorno":{"PORT":"{puertoWeb}","SALUDO":"{campos.nube}","PTO":"{campos.pto}","CLAVE":"{aleatorio.hex32}"} }
