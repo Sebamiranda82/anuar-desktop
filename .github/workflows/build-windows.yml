@@ -1,0 +1,53 @@
+# Flujo REUTILIZABLE: arma el instalador de Windows de cualquier app que tenga desktop.config.json.
+# En la app:   jobs: { instalador: { uses: Sebamiranda82/anuar-desktop/.github/workflows/build-windows.yml@v1 } }
+name: Instalador de escritorio (reutilizable)
+on:
+  workflow_call:
+    inputs:
+      biblioteca: { type: string, default: 'Sebamiranda82/anuar-desktop' }
+      version_biblioteca: { type: string, default: 'v1' }
+      mariadb: { type: string, default: '10.11.9' }
+      node: { type: string, default: '20' }
+      npm_comando: { type: string, default: 'npm ci --omit=dev || npm install --omit=dev' }
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.biblioteca }}
+          ref: ${{ inputs.version_biblioteca }}
+          path: .anuar-desktop
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node }}
+      - name: Dependencias de produccion
+        shell: bash
+        run: ${{ inputs.npm_comando }}
+      - name: Armar carpeta del programa
+        shell: pwsh
+        run: node .anuar-desktop/bin/armar.js --salida stage
+      - name: MariaDB portable (si la app usa base de datos)
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $cfg = Get-Content desktop.config.json -Raw | ConvertFrom-Json
+          if ($cfg.baseDatos) {
+            $v = '${{ inputs.mariadb }}'
+            Invoke-WebRequest -Uri "https://archive.mariadb.org/mariadb-$v/winx64-packages/mariadb-$v-winx64.zip" -OutFile maria.zip -MaximumRetryCount 4 -RetryIntervalSec 5
+            Expand-Archive maria.zip -DestinationPath mdb
+            Move-Item (Get-ChildItem mdb | Select-Object -First 1).FullName stage\mariadb
+            foreach ($x in 'mysql-test','sql-bench','debug','data') { if (Test-Path "stage\mariadb\$x") { Remove-Item -Recurse -Force "stage\mariadb\$x" } }
+            if (-not (Test-Path stage\mariadb\bin\mariadbd.exe)) { throw 'MariaDB: no encuentro bin\mariadbd.exe' }
+            if (-not (Test-Path stage\mariadb\bin\mariadb-install-db.exe)) { throw 'MariaDB: no encuentro bin\mariadb-install-db.exe' }
+          }
+      - name: Crear instalador (Inno Setup)
+        shell: pwsh
+        run: |
+          choco install innosetup -y --no-progress
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" app.iss
+      - uses: actions/upload-artifact@v4
+        with:
+          name: instalador-windows
+          path: Output/*.exe
